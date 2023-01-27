@@ -10,12 +10,17 @@ char *filename = malloc(sizeof(char) * 64);
 int byteval;
 char *temp = malloc(sizeof(char) * 16);
 
+
+
+
+
+
 if (argc==1){   //user doesn't give any input
     printf("Enter a filename: ");
     scanf("%s", filename);
     getchar(); //clear ENTER from input buffer
     printf("Enter a byte value to search for: ");
-    
+   
     //check if it is in hex
     scanf("%s", temp);
     getchar();
@@ -48,6 +53,7 @@ else{ // user provides too many command-line inputs
     printf("Too many inputs.\n");
     return -1; // return with an error
 
+
 }
 //get valid filename
 FILE *fp = fopen(filename, "r");
@@ -62,14 +68,16 @@ while(fp==NULL){
     fp = fopen(filename, "r");
 }
 
+
 //get file size in bytes
 fseek(fp, 0L, SEEK_END);
-int filesize = ftell(fp);
+long int filesize = ftell(fp);
 if (filesize > 25*1024){
-    printf("Error: The file is over 25kB (file size was %d).\n", filesize);
+    printf("Error: The file is over 25kB (file size was %ld).\n", filesize);
     return -1;
 }
 rewind(fp);
+
 
 //find the hex values
 char *buf = malloc(256);
@@ -88,11 +96,14 @@ while(1){
     memset(buf, '\0', 256);
 }
 
+
 printf("%d\n", bytecount);
 free(buf);
 free(temp);
 free(filename);
 fclose(fp);
 
+
 return 0;
 }
+
