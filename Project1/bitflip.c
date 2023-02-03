@@ -121,8 +121,7 @@ int main(int argc, char *argv[]){
 
 	// Check for file versus directory
 	if (S_ISDIR (filestat.st_mode)){
-    	    dir = opendir(input_filename);
-    	    // Can't use -o with directory
+    	    	// Can't use -o with directory
 		if(e_o == 1){
 			printf("Error: -o cannot be used in directory mode\n");
 			free(input_filename);
@@ -130,6 +129,7 @@ int main(int argc, char *argv[]){
 			free(file_extension);
 			return -1;
 		}
+		dir = opendir(input_filename);
 	}
 	else{
     	/* Check input file access */
