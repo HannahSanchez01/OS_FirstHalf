@@ -9,12 +9,12 @@
 void SIGhandler(int sig)
 {
 	 /* Signal handling function */
-	 if(nSigNum == SIGINT){
+	 if(sig == SIGINT){
    	 printf("Control-C was pressed ... exiting\n");
     	exit(0); // send a kill to last running process?
 	}
 
-	else if (nSigNum == SIGKILL){
+	else if (sig == SIGKILL){
 		/// get the pid in the signal handler TODO
 	}
 }
