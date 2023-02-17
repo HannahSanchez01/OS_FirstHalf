@@ -19,6 +19,79 @@ void SIGhandler(int sig)
 	}
 }
 
+/* Start */
+void start(int* status_ptr)
+{
+	int cpid;
+	int rc = fork();
+
+   if(rc==0){ // child process
+		cpid = getpid();
+		printf("ndshell: process %d started\n",cpid);
+      //printf("Executing: %s\n", command);
+      //system(command);
+      exit(0);
+    }
+
+	 else if(rc<0){ // fork failed; exit
+	 	fprintf(stderr, "fork failed\n");
+		exit(1);
+	 }
+
+    else{ // parent process
+		// check                     TODO
+       waitpid(-1, status_ptr, WNOHANG);   /// NONBLOCKING HERE???!!!!!
+        printf("Execution complete!\n");
+    }
+
+	 return;
+}
+
+/* WAIT */
+void wait_func(int * status_ptr){
+	pid_t cpid = waitpid(-1, status_ptr, 0);
+		
+	if (cpid == -1){ // no children
+		printf("ndshell: No children.\n");
+	}
+
+	else if  (WIFEXITED(*status_ptr)){ // if true, normal
+		printf("ndshell: process %d exited normally with status %d\n", cpid, WEXITSTATUS(*status_ptr) );
+	}
+		
+	else if (WIFSIGNALED(*status_ptr)){// if true, abnormal
+		printf("ndshell: process %d exited abnormally with signal %d\n", cpid, WTERMSIG(*status_ptr));
+	}
+
+	return;
+}
+
+/* WAIT FOR */
+void wait_for(int pid, int *status_ptr){
+
+	pid_t cpid = waitpid(pid, status_ptr, 0); 
+		
+	if (cpid == -1){ // process does not exist
+		printf("ndshell: No such process.\n");
+	}
+
+	else if  (WIFEXITED(*status_ptr)){ // if true, normal
+		printf("ndshell: process %d was exited normally with status %d\n", cpid, WEXITSTATUS(*status_ptr));
+	}
+
+	return;
+}
+
+/*
+// RUN //
+void run_func(int *status_ptr, int pid){
+	start(status_ptr);
+	wait_for(pid, status_ptr);
+	
+
+	return;
+}
+*/
 
 
 int main(void)
@@ -44,12 +117,24 @@ int main(void)
     //signal(SIGINT, SIGhandler);
 	 sigaction(SIGINT, &sigSetValue, NULL);
 
+	 int done = 0;
+	 while( !done) {
 
+
+	// TODO Trying to clear the buffer?
+	 if (buf){
+		printf("%s\n",buf);
+	 	memset(buf, '\0', max);
+	 }
+
+	
+	 
 
 	 // Print a prompt to indicate input is ready to be accepted
     printf("ndshell>  ");
     // Receive input
 	 if (fgets( buf, max, stdin) == NULL){
+	 	printf("Did you get here?\n");
 		//Stop if fgets returns NULL
 	 }
 	 // Split the buf and receive the first as the command
@@ -73,67 +158,22 @@ int main(void)
 		return 0;
 	}
 
-
-
 	// check
 	//// DOESN'T LET THE SHELL KEEP RUNNING: make it nonblocking
 	//! START //!
 	else if (strncmp(words[0], "start", sizeof("start")) == 0){
-		
-		rc = fork();
-
-   	if(rc==0){ // child process
-			cpid = getpid();
-			printf("ndshell: process %d started\n",cpid);
-        	//printf("Executing: %s\n", command);
-        	//system(command);
-        	exit(0);
-    	}
-
-	 	else if(rc<0){ // fork failed; exit
-	 		fprintf(stderr, "fork failed\n");
-			exit(1);
-	 	}
-
-    	else{ // parent process
-			// check                     TODO
-       	waitpid(-1, status_ptr, WNOHANG);   /// NONBLOCKING HERE???!!!!!
-        	printf("Execution complete!\n");
-    	}
+		start(status_ptr);
 	}
 	
 	// WAIT 
 	else if (strncmp(words[0], "wait", sizeof("wait")) == 0){
-
-		pid_t cpid = waitpid(-1, status_ptr, 0);
-		
-		if (cpid == -1){ // no children
-			printf("ndshell: No children.\n");
-		}
-
-		else if  (WIFEXITED(*status_ptr)){ // if true, normal
-			printf("ndshell: process %d exited normally with status %d\n", cpid, WEXITSTATUS(*status_ptr) );
-		}
-		
-		else if (WIFSIGNALED(*status_ptr)){// if true, abnormal
-			printf("ndshell: process %d exited abnormally with signal %d\n", cpid, WTERMSIG(*status_ptr));
-		}
+		wait_func(status_ptr);
 	}
-
 	
 	// WAITFOR //blocks, wait for specifc waitpid
 	else if (strncmp(words[0], "waitfor", sizeof("waitfor")) == 0){
 		pid = atoi(words[1]); // make the input an int from string
-		pid_t cpid = waitpid(pid, status_ptr, 0); 
-		
-		if (cpid == -1){ // process does not exist
-			printf("ndshell: No such process.\n");
-		}
-
-		else if  (WIFEXITED(*status_ptr)){ // if true, normal
-			printf("ndshell: process %d was exited normally with status %d\n", cpid, WEXITSTATUS(*status_ptr));
-		}
-
+		wait_for(pid, status_ptr);
 	}
 
 
@@ -141,6 +181,7 @@ int main(void)
 	// RUN	
 	else if (strncmp(words[0], "run", sizeof("run")) == 0){
 		printf("%d\n",i);
+		//run_func(pid, status_ptr);
 		// make arg list
 /*
  		
@@ -155,6 +196,16 @@ int main(void)
 			
 		}
 */
+	}
+
+
+	else if (strncmp(words[0], "logout", sizeof("logout")) == 0){
+		done = 1; 
+		break;
+	}
+
+	else{ // error check for undefined command
+		printf("Undefined command.\n");
 	}
 
 	//printf("ndshell: process %d exited normally with status %d\n", pid, );
@@ -190,7 +241,7 @@ int main(void)
 		// Don't think we need this anymore
 	 // clear input buffer
     //while (((c=getchar()) != '\n') && (c != EOF)){}
-
+	}
 
     return 0;
 }
