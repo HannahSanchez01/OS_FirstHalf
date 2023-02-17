@@ -27,7 +27,7 @@ int main(void)
 	 struct sigaction sigSetValue;
 	 sigSetValue.sa_handler = SIGhandler;
 
-	 int max = 64;
+	 int max = 1000;
 	 char *token;
 	 char *words[100];
     char buf[max];
