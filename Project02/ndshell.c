@@ -133,7 +133,6 @@ void SIGhandler(int sig){
 	if(sig == SIGINT){
    		printf("Control-C was pressed ... ending most recent process (id: %d)\n", pid_list[pid_index-1]);
     	kill_child(pid_list[pid_index-1], &status); // send a kill to last running process?
-		fflush(stdout);
 	}
 }
 
@@ -141,7 +140,7 @@ void SIGhandler(int sig){
 void bound(int time, char **command, int *status_ptr){
 	int waittime = 0;
 	int pid = start(command);
-	int cpid;
+	int cpid, kill_flag=0;
 	do {
 		cpid = waitpid(pid, status_ptr, WNOHANG);
 		if (cpid == 0) {
@@ -152,16 +151,17 @@ void bound(int time, char **command, int *status_ptr){
 			else {
 				printf("Process %d exceeded the time limit, killing it...\n", pid);
 				kill_child(pid, status_ptr); 
+				kill_flag = 1;
 			}
 		}
 	} while (cpid == 0 && waittime <= time);
 
-	if  (WIFEXITED(*status_ptr)){ // if true, normal
+	if  (!kill_flag && (WIFEXITED(*status_ptr))){ // if true, normal
 		printf("ndshell: process %d was exited normally with status %d\n", cpid, WEXITSTATUS(*status_ptr));
 		pid_remove(cpid);
 	}
 
-	else if (WIFSIGNALED(*status_ptr)){// if true, abnormal
+	else if (!kill_flag &&(WIFSIGNALED(*status_ptr))){// if true, abnormal
 		printf("ndshell: process %d exited abnormally with signal %d\n", cpid, WTERMSIG(*status_ptr));
 		pid_remove(cpid);
 	}
