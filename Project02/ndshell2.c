@@ -6,35 +6,33 @@
 #include <signal.h>
 
 int pid_list[10] = {0}; //array to store current processes
+int pid_index = 0;
 int i = 0;
-
-void SIGhandler(int sig){
-	 /* Signal handling function */
-	 if(sig == SIGINT){
-   	 printf("Control-C was pressed ... exiting\n");
-    	exit(0); // send a kill to last running process?
-	}
-
-	else if (sig == SIGKILL){
-		/// get the pid in the signal handler TODO
-	}
-}
+int status;
 
 void pid_add(int pid){
-	for(int j=0; j<10; j++){
-		if (pid_list[j] == 0){
-			pid_list[j] = pid;
-			break;
-		}
-	}
+	pid_list[pid_index] = pid;
+	pid_index++;
 }
 
 void pid_remove(int pid){
-	for(int j=0; j<10; j++){
-		if (pid_list[j] == pid){
-			pid_list[j] = 0;
-			break;
+	int index = -1;
+	for(int j=0; j<pid_index; j++){
+		if(pid_list[j] == pid){
+			pid_list[j] = 0; //remove pid from active list
+			index = j;
 		}
+	}
+	if(index != -1){
+		for(int j=index; j<pid_index; j++){
+			if(j < 9){
+				pid_list[j] = pid_list[j+1]; //shift left to keep list condensed
+			}
+			else{
+				pid_list[j] = 0; //if at last index, just make 0
+			}
+		}
+		pid_index--;
 	}
 }
 
@@ -116,6 +114,29 @@ void run_func(char **command, int *status_ptr){
 	return;
 }
 
+// KILL //
+void kill_child(int pid, int *status_ptr){
+	kill(pid, SIGKILL);
+	wait_for(pid, status_ptr);
+}
+
+// QUIT //
+void quit(int *status_ptr){
+	for(int j=pid_index-1; j>=0; j--){ // reverse order for optimization
+		kill_child(pid_list[j], status_ptr);
+	}
+	printf("All child processes complete - exiting the shell.\n");
+}
+
+void SIGhandler(int sig){
+	/* Signal handling function */
+	if(sig == SIGINT){
+   		printf("Control-C was pressed ... ending most recent process (id: %d)\n", pid_list[pid_index-1]);
+    	kill_child(pid_list[pid_index-1], &status); // send a kill to last running process?
+		fflush(stdout);
+	}
+}
+
 int main(void)
 {
 	struct sigaction sigSetValue;
@@ -127,15 +148,12 @@ int main(void)
 	char *command[100];
     char buf[max];
 	int pid;
-	int status;
    
 	// Set up sigactions   ///control C and Kill.
 	// Kill
 	sigaction(SIGKILL, &sigSetValue, NULL);
 
-	// does this need to be sigaction instead? TODO
 	// Signaler C 
-    //signal(SIGINT, SIGhandler);
 	sigaction(SIGINT, &sigSetValue, NULL);
 
 	int done = 0;
@@ -208,6 +226,18 @@ int main(void)
 			command[j] = NULL;
 		}
 		run_func(command, &status);
+	}
+
+	// KILL
+	else if (strncmp(words[0], "kill", sizeof("kill")) == 0){
+		pid = atoi(words[1]);
+		kill_child(pid, &status);
+	}
+
+	// QUIT
+	else if (strncmp(words[0], "quit", sizeof("quit")) == 0){
+		quit(&status);
+		return 0;
 	}
 
 	else if (strncmp(words[0], "logout", sizeof("logout")) == 0){
