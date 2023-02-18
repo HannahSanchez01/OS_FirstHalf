@@ -138,6 +138,34 @@ void SIGhandler(int sig){
 }
 
 // BOUND //
+void bound(int time, char **command, int *status_ptr){
+	int waittime = 0;
+	int pid = start(command);
+	int cpid;
+	do {
+		cpid = waitpid(pid, status_ptr, WNOHANG);
+		if (cpid == 0) {
+			if (waittime < time) {
+				sleep(1);
+				waittime ++;
+			}
+			else {
+				printf("Process %d exceeded the time limit, killing it...\n", pid);
+				kill_child(pid, status_ptr); 
+			}
+		}
+	} while (cpid == 0 && waittime <= time);
+
+	if  (WIFEXITED(*status_ptr)){ // if true, normal
+		printf("ndshell: process %d was exited normally with status %d\n", cpid, WEXITSTATUS(*status_ptr));
+		pid_remove(cpid);
+	}
+
+	else if (WIFSIGNALED(*status_ptr)){// if true, abnormal
+		printf("ndshell: process %d exited abnormally with signal %d\n", cpid, WTERMSIG(*status_ptr));
+		pid_remove(cpid);
+	}
+}
 
 int main(void)
 {
@@ -150,141 +178,110 @@ int main(void)
 	char *command[100];
     char buf[max];
 	int pid;
+	int time;
    
 	// Set up sigactions   ///control C and Kill.
 	// Kill
-	sigaction(SIGKILL, &sigSetValue, NULL);
+	sigaction(SIGKILL, &sigSetValue, NULL); // do we need this?
 
 	// Signaler C 
 	sigaction(SIGINT, &sigSetValue, NULL);
 
 	int done = 0;
 	while( !done) {
+		// TODO Trying to clear the buffer?
+		if (buf[0]){
+			//printf("%s\n",buf);
+			memset(buf, '\0', (size_t) max);
+		} 
 
-
-	// TODO Trying to clear the buffer?
-	if (buf[0]){
-		//printf("%s\n",buf);
-	 	memset(buf, '\0', (size_t) max);
-	} 
-
-	// Print a prompt to indicate input is ready to be accepted
-    printf("ndshell>  ");
-    // Receive input
-	if (fgets( buf, max, stdin) == NULL){
-	 	printf("Did you get here?\n");
-		//Stop if fgets returns NULL
-	}
-	// Split the buf and receive the first as the command
-	token = strtok(buf, " \t\n"); // split by spaces
-	i=0; //reset word counter
-	words[i] = malloc(30 * sizeof(char)); // allocate space for the command string
-	strcpy(words[i], token); // first word is command
-	// Keep splitting the buf
-	while ((token != NULL) && (i<=100)){
-		i++;
-	    words[i] = malloc(30 * sizeof(char)); // allocate space for string
-	    token = strtok(NULL, " \t\n");
-		words[i] = token;
-	}
-	 
-	// TODO:
-	//  /* OPTION WORKING*/
-	//  //! Option in progres//!
-
-	/* EXIT */
-	if (strncmp(words[0], "exit", sizeof("exit")) == 0){
-		printf("ndshell: Exiting shell immediately\n");
-		return 0;
-	}
-
-	// check
-	//// DOESN'T LET THE SHELL KEEP RUNNING: make it nonblocking
-	//! START //!
-	else if (strncmp(words[0], "start", sizeof("start")) == 0){
-		for (int j=1; j<i; j++){
-			command[j-1] = words[j];
-			command[j] = NULL;
+		// Print a prompt to indicate input is ready to be accepted
+		printf("ndshell>  ");
+		// Receive input
+		if (fgets( buf, max, stdin) == NULL){
+			printf("Did you get here?\n");
+			//Stop if fgets returns NULL
 		}
-		start(command);
-		usleep(10000);
-	}
-	
-	// WAIT 
-	else if (strncmp(words[0], "wait", sizeof("wait")) == 0){
-		wait_func(&status);
-	}
-	
-	// WAITFOR //blocks, wait for specifc waitpid
-	else if (strncmp(words[0], "waitfor", sizeof("waitfor")) == 0){
-		pid = atoi(words[1]); // make the input an int from string
-		wait_for(pid, &status);
-	}
-	
-	// RUN	
-	else if (strncmp(words[0], "run", sizeof("run")) == 0){
-		for (int j=1; j<i; j++){
-			command[j-1] = words[j];
-			command[j] = NULL;
+		// Split the buf and receive the first as the command
+		token = strtok(buf, " \t\n"); // split by spaces
+		i=0; //reset word counter
+		words[i] = malloc(30 * sizeof(char)); // allocate space for the command string
+		strcpy(words[i], token); // first word is command
+		// Keep splitting the buf
+		while ((token != NULL) && (i<=100)){
+			i++;
+			words[i] = malloc(30 * sizeof(char)); // allocate space for string
+			token = strtok(NULL, " \t\n");
+			words[i] = token;
 		}
-		run_func(command, &status);
-	}
 
-	// KILL
-	else if (strncmp(words[0], "kill", sizeof("kill")) == 0){
-		pid = atoi(words[1]);
-		kill_child(pid, &status);
-	}
+		/* EXIT */
+		if (strncmp(words[0], "exit", sizeof("exit")) == 0){
+			printf("ndshell: Exiting shell immediately\n");
+			return 0;
+		}
 
-	// QUIT
-	else if (strncmp(words[0], "quit", sizeof("quit")) == 0){
-		quit(&status);
-		return 0;
-	}
+		// START //
+		else if (strncmp(words[0], "start", sizeof("start")) == 0){
+			for (int j=1; j<i; j++){
+				command[j-1] = words[j];
+				command[j] = NULL;
+			}
+			start(command);
+			usleep(10000);
+		}
+		
+		// WAIT 
+		else if (strncmp(words[0], "wait", sizeof("wait")) == 0){
+			wait_func(&status);
+		}
+		
+		// WAITFOR //blocks, wait for specifc waitpid
+		else if (strncmp(words[0], "waitfor", sizeof("waitfor")) == 0){
+			pid = atoi(words[1]); // make the input an int from string
+			wait_for(pid, &status);
+		}
+		
+		// RUN	
+		else if (strncmp(words[0], "run", sizeof("run")) == 0){
+			for (int j=1; j<i; j++){
+				command[j-1] = words[j];
+				command[j] = NULL;
+			}
+			run_func(command, &status);
+		}
 
-	else if (strncmp(words[0], "logout", sizeof("logout")) == 0){
-		done = 1; 
-		break;
-	}
+		// BOUND
+		else if (strncmp(words[0], "bound", sizeof("run")) == 0){
+			time = atoi(words[1]);
+			for (int j=2; j<i; j++){
+				command[j-2] = words[j];
+				command[j-1] = NULL;
+			}
+			bound(time, command, &status);
+		}
 
-	else{ // error check for undefined command
-		printf("Undefined command.\n");
-	}
+		// KILL
+		else if (strncmp(words[0], "kill", sizeof("kill")) == 0){
+			pid = atoi(words[1]);
+			kill_child(pid, &status);
+		}
 
-	//printf("ndshell: process %d exited normally with status %d\n", pid, );
-	// combine start and waitfor: fork and use execvp()
-	//
-	/* execvp notes:
-	 * use execvp on a new process after forking
-	 *	the arg list must be NULL terminated!
-	 * anything that comes after will NOT execute
-	 * returns -1 if failed
-	 */
+		// QUIT
+		else if (strncmp(words[0], "quit", sizeof("quit")) == 0){
+			quit(&status);
+			return 0;
+		}
 
+		else if (strncmp(words[0], "logout", sizeof("logout")) == 0){
+			done = 1; 
+			break;
+		}
 
-	/*
-	// KILL
-	printf("ndshell: process %d started\n", pid);
-	printf("ndshell: process %d exited abnormally with signal %d: Killed.\n", pid, );
-	*/
-
-
-
-	// QUIT
-	// to kill all
-	/*
-	 kill(-1, SIGKILL);
-
-	 */
-
-
-
-		// Don't think we need this anymore
-	 // clear input buffer
-    //while (((c=getchar()) != '\n') && (c != EOF)){}
+		else{ // error check for undefined command
+			printf("Undefined command.\n");
+		}
 	}
 
     return 0;
 }
-
-
