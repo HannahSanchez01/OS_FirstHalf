@@ -8,7 +8,6 @@
 int pid_list[10] = {0}; //array to store current processes
 int pid_index = 0;
 int i = 0;
-int status;
 
 void pid_add(int pid){
 	pid_list[pid_index] = pid;
@@ -145,13 +144,15 @@ void quit(int *status_ptr){
 
 // CONTROL-C
 void SIGhandler(int sig){
-
+	int status;
 	int pid = pid_list[pid_index-1];
-
 	/* Signal handling function */
-	if(sig == SIGINT){
-   		printf("Control-C was pressed ... ending most recent process (id: %d)\n", pid_list[pid_index-1]);
-    	kill_child(pid_list[pid_index-1], &status); // send a kill to last running process?
+	if((pid != 0) && (sig == SIGINT)){
+   		printf("Control-C was pressed ... ending most recent process (id: %d)\n", pid);
+    	kill_child(pid, &status); // send a kill to last running process?
+	}
+	else{
+		printf("\n"); //formatting
 	}
 }
 
@@ -203,10 +204,11 @@ int main(void)
     char buf[max];
 	int pid;
 	int time;
+	int status;
    
 	// Set up sigactions   ///control C and Kill.
 	// Kill
-	sigaction(SIGKILL, &sigSetValue, NULL); // do we need this?
+	//sigaction(SIGKILL, &sigSetValue, NULL); // do we need this?
 
 	// Signaler C 
 	sigaction(SIGINT, &sigSetValue, NULL);
@@ -222,7 +224,7 @@ int main(void)
 
 		// Receive input
 		if (fgets( buf, max, stdin) == NULL){
-			//Stop if fgets returns NULL
+			continue;
 		}
 
 		// Split the buf and receive the first as the command
