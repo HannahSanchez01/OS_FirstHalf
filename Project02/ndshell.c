@@ -192,7 +192,7 @@ void bound(int time, char **command, int *status_ptr){
 	}
 }
 
-int main(void)
+int main(int argc, char* argv[])
 {
 	struct sigaction sigSetValue;
 	sigSetValue.sa_handler = SIGhandler;
@@ -205,7 +205,7 @@ int main(void)
 	int pid;
 	int time;
 	int status;
-   
+	
 	// Set up sigactions   ///control C and Kill.
 	// Kill
 	//sigaction(SIGKILL, &sigSetValue, NULL); // do we need this?
@@ -214,6 +214,7 @@ int main(void)
 	sigaction(SIGINT, &sigSetValue, NULL);
 
 	int done = 0;
+
 	while( !done) {
 		if (buf[0]){
 			memset(buf, '\0', (size_t) max);
@@ -269,40 +270,84 @@ int main(void)
 		
 		// WAITFOR //blocks, wait for specifc waitpid
 		else if (strncmp(words[0], "waitfor", sizeof("waitfor")) == 0){
+			
+			if (i < 2){ // No pid
+				printf("ndshell: waitfor <pid>\n");
+			}
 
-			pid = atoi(words[1]); // make the input an int from string
-			wait_for(pid, &status);
+			else{
+				pid = atoi(words[1]); // make the input an int from string
+
+				if (pid == 0){ // atoi error: not a number
+					printf("ndshell: %s is not a number for pid\n",words[1]);
+				}
+				else{
+					wait_for(pid, &status);
+				}
+			}
 		}
 		
 		// RUN	
 		else if (strncmp(words[0], "run", sizeof("run")) == 0){
 
-			for (int j=1; j<i; j++){
-				command[j-1] = words[j];
-				command[j] = NULL;
+			if (i < 2){ // No command
+				printf("ndshell: run <command>\n");
 			}
+			else{
 
-			run_func(command, &status);
+				for (int j=1; j<i; j++){
+					command[j-1] = words[j];
+					command[j] = NULL;
+				}
+
+				run_func(command, &status);
+			}
 		}
 
 		// BOUND
 		else if (strncmp(words[0], "bound", sizeof("run")) == 0){
 
-			time = atoi(words[1]);
-
-			for (int j=2; j<i; j++){
-				command[j-2] = words[j];
-				command[j-1] = NULL;
+			if (i < 3){ // No time or command
+				printf("ndshell: bound <timeout> <command>\n");
 			}
 
-			bound(time, command, &status);
+			else{
+			
+				time = atoi(words[1]);
+				if (time == 0){ // atoi error: not a number
+					printf("ndshell: %s is not a number for timeout\n",words[1]);
+				}
+
+				else{
+
+					for (int j=2; j<i; j++){
+						command[j-2] = words[j];
+						command[j-1] = NULL;
+					}
+
+					bound(time, command, &status);
+				}
+			}
 		}
 
 		// KILL
 		else if (strncmp(words[0], "kill", sizeof("kill")) == 0){
 
-			pid = atoi(words[1]);
-			kill_child(pid, &status);
+			if (i < 2){ // No pid
+				printf("ndshell: kill <pid>\n");
+			}
+
+			else{
+				pid = atoi(words[1]);
+
+				if (pid == 0){ // atoi error: not a number
+					printf("ndshell: %s is not a number for pid\n",words[1]);
+				}
+				
+				else{
+					kill_child(pid, &status);
+				}
+			}
 		}
 
 		// QUIT
