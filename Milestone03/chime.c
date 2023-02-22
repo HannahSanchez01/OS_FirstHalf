@@ -102,12 +102,18 @@ the thread
            as needed */
 		  else if (strncmp(words[0], "chime", sizeof("chime")) == 0){
 		  		int index;
+				float interval;
 
 				index = atoi(words[1]); // TODO if invalid, this will return 0... something other than atoi might need to be used
 				TheThreads[index].nIndex = index; /// TODO ??? what is up with the indexes
 				
 				if (TheThreads[index].bIsValid == 0){ // if thread is invalid, start a new one!					//TODO
-					//pthread_create( &(TheThreads[index].ThreadID), NULL, func, arg--interval));
+					
+					TheThreads[index].bIsValid = 1; // validate the data
+
+					interval = (float) atof(words[2]); // TODO check to make sure interval is a valid float
+					TheThreads[index].fChimeInterval = interval;
+					pthread_create( &(TheThreads[index].ThreadID), NULL, ThreadChime, TheThreads[index]);
 				}
 
 				else{ // just update the existing thread
