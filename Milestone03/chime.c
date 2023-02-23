@@ -80,7 +80,7 @@ int main (int argc, char *argv[])
 		  }
 
 
-        /* If the command is quit - join any active threads and finish up gracefully */
+        /* If the command is exit - join any active threads and finish up gracefully */
 		  if (strncmp(words[0], "exit", sizeof("exit")) == 0){
 				g_bKeepLooping = 0;
 		  		for (j=0; j<MAX_THREADS; j++){ // join all threads
@@ -118,7 +118,7 @@ int main (int argc, char *argv[])
 						TheThreads[index].bIsValid = 1; // validate the data
 						TheThreads[index].fChimeInterval = interval;
 						pthread_create(&(TheThreads[index].ThreadID), NULL, ThreadChime, &TheThreads[index]);
-						printf("Starting thread %d for chime %d, interval of %g s\n", TheThreads[index].ThreadID, index, interval);
+						printf("Starting thread %ld for chime %d, interval of %g s\n", TheThreads[index].ThreadID, index, interval);
 					}
 
 					else{ // just update the existing thread
