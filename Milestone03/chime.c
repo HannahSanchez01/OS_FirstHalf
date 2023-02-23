@@ -80,7 +80,6 @@ int main (int argc, char *argv[])
 		}
 
 
-<<<<<<< HEAD
         /* If the command is quit - join any active threads and finish up gracefully */
 		if (strncmp(words[0], "exit", sizeof("exit")) == 0){
 			g_bKeepLooping = 0;
@@ -89,19 +88,6 @@ int main (int argc, char *argv[])
 					printf("Joining Chime %d (Thread %ld)\n", j, TheThreads[j].ThreadID);
 					pthread_join( TheThreads[j].ThreadID, NULL);
 					printf("Join Complete for Chime %d\n", j);
-=======
-        /* If the command is exit - join any active threads and finish up gracefully */
-		  if (strncmp(words[0], "exit", sizeof("exit")) == 0){
-				g_bKeepLooping = 0;
-		  		for (j=0; j<MAX_THREADS; j++){ // join all threads
-					if ( TheThreads[j].bIsValid == 1){ // only join if the thread has valid data AKA it was created
-						pthread_join( TheThreads[j].ThreadID, NULL);
-					}
-				}
-				
-				for (j=0; j<i; j++){ // free malloced memory for words
-					free(words[i]);
->>>>>>> c046707192371e54b55a0f674392eb4b6f57c39a
 				}
 			}
 			printf("Exiting chime program...\n");
@@ -113,7 +99,6 @@ int main (int argc, char *argv[])
 		}
 
         /* If the command is chime, the second argument is the chime number (integer) and the 
-<<<<<<< HEAD
 		third number is the new interval (floating point). If necessary, start the thread
 		as needed */
 		else if (strncmp(words[0], "chime", sizeof("chime")) == 0){
@@ -129,42 +114,13 @@ int main (int argc, char *argv[])
 				printf("Error: interval must be a positive number\n");
 			}
 			else{
-				TheThreads[index].nIndex = index; /// TODO ??? what is up with the indexes
+				TheThreads[index].nIndex = index; 
 				
-				if (TheThreads[index].bIsValid == 0){ // if thread is invalid, start a new one!					//TODO
+				if (TheThreads[index].bIsValid == 0){ // if thread is invalid, start a new one!
 					TheThreads[index].bIsValid = 1; // validate the data
 					TheThreads[index].fChimeInterval = interval;
 					pthread_create(&(TheThreads[index].ThreadID), NULL, ThreadChime, &TheThreads[index]);
 					printf("Starting thread %ld for chime %d, interval of %g s\n", TheThreads[index].ThreadID, index, interval);
-=======
-           third number is the new interval (floating point). If necessary, start the thread
-           as needed */
-		  else if (strncmp(words[0], "chime", sizeof("chime")) == 0){
-				index = atoi(words[1]);
-				interval = (float) atof(words[2]);
-				if((index == 0) && (strcmp(words[1], "0") != 0)){ // check for invalid input
-					printf("Error: chime number must be a non-negative integer.\n");
-				}
-				else if ((index < 0) || (index >= MAX_THREADS)){ // index must be between 0 and maxthreads-1
-					printf("Cannot adjust chime %d, out of range\n", index);
-				}
-				else if (interval <= 0){ // interval must be >0; also covers non-number input since atof=0
-					printf("Error: interval must be a positive number\n");
-				}
-				else{
-					TheThreads[index].nIndex = index; /// TODO ??? what is up with the indexes
-					
-					if (TheThreads[index].bIsValid == 0){ // if thread is invalid, start a new one!					//TODO
-						TheThreads[index].bIsValid = 1; // validate the data
-						TheThreads[index].fChimeInterval = interval;
-						pthread_create(&(TheThreads[index].ThreadID), NULL, ThreadChime, &TheThreads[index]);
-						printf("Starting thread %ld for chime %d, interval of %g s\n", TheThreads[index].ThreadID, index, interval);
-					}
-
-					else{ // just update the existing thread
-
-					}
->>>>>>> c046707192371e54b55a0f674392eb4b6f57c39a
 				}
 
 				else{ // just update the existing thread
