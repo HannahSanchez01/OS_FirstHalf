@@ -105,7 +105,7 @@ int main (int argc, char *argv[])
 				if((index == 0) && (strcmp(words[1], "0") != 0)){ // check for invalid input
 					printf("Error: chime number must be a non-negative integer.\n");
 				}
-				else if (index < 0){ // cant have negative chime
+				else if ((index < 0) || (index >= MAX_THREADS)){ // index must be between 0 and maxthreads-1
 					printf("Cannot adjust chime %d, out of range\n", index);
 				}
 				else if (interval <= 0){ // interval must be >0; also covers non-number input since atof=0
