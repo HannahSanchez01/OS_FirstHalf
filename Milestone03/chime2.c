@@ -6,6 +6,7 @@
 
 char g_bKeepLooping = 1;
 int i = 0;
+pthread_mutex_t lock;
 
 #define MAX_THREADS 5
 
@@ -135,8 +136,11 @@ int main (int argc, char *argv[])
 				}
 
 				else{ // just update the existing thread
+
+	 	  			pthread_mutex_lock(&lock); // lock to protect the changing of a thread
 					TheThreads[index].fChimeInterval = interval;
 					printf("Adjusting chime %d to have an interval of %g s\n", index, interval);
+		  			pthread_mutex_unlock(&lock);  // unlock
 				}
 			}
 		}
