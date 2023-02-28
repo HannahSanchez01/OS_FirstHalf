@@ -10,6 +10,7 @@ Starting code for CSE 30341 Project 3 - Spring 2023
 #include <string.h>
 #include <complex.h>
 #include <pthread.h>
+#include <getopt.h>
 
 #include "bitmap.h"
 #include "fractal.h"
@@ -88,7 +89,14 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
     return 1;
 }
 
-
+int isNumber(char *str, int len){
+    for(int i=0; i<len; i++){
+        if((str[i]<'-') || (str[i]>'9') || (str[i] == '/')){
+            return 0;
+        }
+    }
+    return 1;
+}
 
 
 int main( int argc, char *argv[] )
@@ -130,7 +138,86 @@ int main( int argc, char *argv[] )
 
         You may also appropriately apply reasonable minimum / maximum values (e.g. minimum image width, etc.)
     */
+    static struct option opts[] = {
+        {"help", no_argument, 0, 'h'},
+        {"xmin", required_argument, 0, 'a'},
+        {"xmax", required_argument, 0, 'b'},
+        {"ymin", required_argument, 0, 'c'},
+        {"ymax", required_argument, 0, 'd'},
+        {"maxiter", required_argument, 0, 'm'},
+        {"width", required_argument, 0, 'w'},
+        {"height", required_argument, 0, 'h'},
+        {"output", required_argument, 0, 'o'},
+        {"threads", required_argument, 0, 't'},
+        {"row", no_argument, 0, 'r'},
+        {"task", no_argument, 0, 's'},
+        {0, 0, 0, 0}
+    }
+    int c, optindex = 0;
 
+    while ((c = getopt_long_only(argc, argv, NULL, opts, &optindex)) != -1){
+        switch (c){
+            case 'h':
+                printf("help message\n");
+                return 0;
+            case 'a':
+                if (atof(optarg) || isNumber(optarg, strlen(optarg))){
+                    theSettings.fMinX = atof(optarg);
+                }
+                else{
+                    printf("Error: -xmin requires numeric argument.\n");
+                    return -1;
+                }
+                break;
+            case 'b':
+                if (atof(optarg) || isNumber(optarg, strlen(optarg))){
+                    if (atof(optarg) > theSettings.fMinX){
+                        theSettings.fMaxX = atof(optarg);
+                    }
+                    else{
+                        printf("Error: -xmax argument must be greater than -xmin argument.\n");
+                        return -1;
+                    }
+                }
+                else{
+                    printf("Error: -xmax requires integer argument.\n");
+                    return -1;
+                }
+                break;
+            case 'c':
+                theSettings.fMinY = optarg;
+                break;
+            case 'd':
+                theSettings.fMaxY = optarg;
+                break;
+            case 'm':
+                theSettings.nMaxIter = optarg;
+                break;
+            case 'w':
+                theSettings.nPixelWidth = optarg;
+                break;
+            case 'h':
+                theSettings.nPixelHeight = optarg;
+                break;
+            case 'o':
+                theSettings.szOutfile = optarg;
+                break;
+            case 't':
+                theSettings.nThreads = optarg;
+                break;
+            case 'r':
+                shasad
+                break;
+            case 's':
+                sadsa
+                break;
+            case '?':
+                printf("Invalid option specified.\n");
+                return -1;
+            default:
+                return -1;
+        }
+    }
 
    /* Are there any locks to set up? */
 
