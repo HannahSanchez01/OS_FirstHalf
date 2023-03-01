@@ -85,7 +85,134 @@ void compute_image_singlethread ( struct FractalSettings * pSettings, struct bit
    @returns 1 if successful, 0 if unsuccessful (bad arguments) */
 char processArguments (int argc, char * argv[], struct FractalSettings * pSettings)
 {
-    /* If we don't process anything, it must be successful, right? */
+    static struct option opts[] = {
+        {"help", no_argument, 0, 'h'},
+        {"xmin", required_argument, 0, 'a'},
+        {"xmax", required_argument, 0, 'b'},
+        {"ymin", required_argument, 0, 'c'},
+        {"ymax", required_argument, 0, 'd'},
+        {"maxiter", required_argument, 0, 'm'},
+        {"width", required_argument, 0, 'w'},
+        {"height", required_argument, 0, 'h'},
+        {"output", required_argument, 0, 'o'},
+        {"threads", required_argument, 0, 't'},
+        {"row", no_argument, 0, 'r'},
+        {"task", no_argument, 0, 's'},
+        {0, 0, 0, 0}
+    }
+    int c, optindex = 0;
+
+    while ((c = getopt_long_only(argc, argv, NULL, opts, &optindex)) != -1){
+        switch (c){
+            case 'h':
+                printf("help message\n");
+                return 0;
+            case 'a':
+                if (atof(optarg) || isNumber(optarg, strlen(optarg))){
+                    pSettings->fMinX = atof(optarg);
+                }
+                else{
+                    printf("Error: -xmin requires numeric argument.\n");
+                    return -1;
+                }
+                break;
+            case 'b':
+                if (atof(optarg) || isNumber(optarg, strlen(optarg))){
+                    if (atof(optarg) > pSettings->fMinX){
+                        pSettings->fMaxX = atof(optarg);
+                    }
+                    else{
+                        printf("Error: -xmax argument must be greater than -xmin argument.\n");
+                        return -1;
+                    }
+                }
+                else{
+                    printf("Error: -xmax requires numeric argument.\n");
+                    return -1;
+                }
+                break;
+            case 'c':
+                if (atof(optarg) || isNumber(optarg, strlen(optarg))){
+                    pSettings->fMinY = atof(optarg);
+                }
+                else{
+                    printf("Error: -ymin requires numeric argument.\n");
+                    return -1;
+                }
+                break;
+            case 'd':
+                if (atof(optarg) || isNumber(optarg, strlen(optarg))){
+                    if (atof(optarg) > pSettings->fMinY){
+                        pSettings->fMaxY = atof(optarg);
+                    }
+                    else{
+                        printf("Error: -ymax argument must be greater than -ymin argument.\n");
+                        return -1;
+                    }
+                }
+                else{
+                    printf("Error: -ymax requires numeric argument.\n");
+                    return -1;
+                }
+                break;
+            case 'm':
+                if (atoi(optarg)>0){
+                    pSettings->nMaxIter = atoi(optarg);
+                }
+                else{
+                    printf("Error: -maxiter requires positive integer argument.\n");
+                    return -1;
+                }
+                break;
+            case 'w':
+                if (atoi(optarg)>0){
+                    pSettings->nPixelWidth = atoi(optarg);
+                }
+                else{
+                    printf("Error: -width requires positive integer argument.\n");
+                    return -1;
+                }
+                break;
+            case 'h':
+                if (atoi(optarg)>0){
+                    pSettings->nPixelHeight = atoi(optarg);
+                }
+                else{
+                    printf("Error: -height requires positive integer argument.\n");
+                    return -1;
+                }
+                break;
+            case 'o':
+                if (strlen(optarg)<=MAX_OUTFILE_NAME_LEN){
+                    strncpy(pSettings->szOutfile, optarg, MAX_OUTFILE_NAME_LEN);
+                }
+                else{
+                    printf("Error: output filename must be less than %d characters.\n", MAX_OUTFILE_NAME_LEN);
+                    return -1;
+                }
+                break;
+            case 't':
+                if (atoi(optarg)>0){
+                    pSettings->nThreads = atoi(optarg);
+                }
+                else{
+                    printf("Error: -threads requires positive integer argument.\n");
+                    return -1;
+                }
+                break;
+            case 'r':
+                pSettings->theMode = MODE_THREAD_ROW;
+                break;
+            case 's':
+                pSettings->theMode = MODE_THREAD_TASK;
+                break;
+            case '?':
+                printf("Invalid option specified.\n");
+                return -1;
+            default:
+                return -1;
+        }
+    }
     return 1;
 }
 
@@ -138,86 +265,7 @@ int main( int argc, char *argv[] )
 
         You may also appropriately apply reasonable minimum / maximum values (e.g. minimum image width, etc.)
     */
-    static struct option opts[] = {
-        {"help", no_argument, 0, 'h'},
-        {"xmin", required_argument, 0, 'a'},
-        {"xmax", required_argument, 0, 'b'},
-        {"ymin", required_argument, 0, 'c'},
-        {"ymax", required_argument, 0, 'd'},
-        {"maxiter", required_argument, 0, 'm'},
-        {"width", required_argument, 0, 'w'},
-        {"height", required_argument, 0, 'h'},
-        {"output", required_argument, 0, 'o'},
-        {"threads", required_argument, 0, 't'},
-        {"row", no_argument, 0, 'r'},
-        {"task", no_argument, 0, 's'},
-        {0, 0, 0, 0}
-    }
-    int c, optindex = 0;
-
-    while ((c = getopt_long_only(argc, argv, NULL, opts, &optindex)) != -1){
-        switch (c){
-            case 'h':
-                printf("help message\n");
-                return 0;
-            case 'a':
-                if (atof(optarg) || isNumber(optarg, strlen(optarg))){
-                    theSettings.fMinX = atof(optarg);
-                }
-                else{
-                    printf("Error: -xmin requires numeric argument.\n");
-                    return -1;
-                }
-                break;
-            case 'b':
-                if (atof(optarg) || isNumber(optarg, strlen(optarg))){
-                    if (atof(optarg) > theSettings.fMinX){
-                        theSettings.fMaxX = atof(optarg);
-                    }
-                    else{
-                        printf("Error: -xmax argument must be greater than -xmin argument.\n");
-                        return -1;
-                    }
-                }
-                else{
-                    printf("Error: -xmax requires integer argument.\n");
-                    return -1;
-                }
-                break;
-            case 'c':
-                theSettings.fMinY = optarg;
-                break;
-            case 'd':
-                theSettings.fMaxY = optarg;
-                break;
-            case 'm':
-                theSettings.nMaxIter = optarg;
-                break;
-            case 'w':
-                theSettings.nPixelWidth = optarg;
-                break;
-            case 'h':
-                theSettings.nPixelHeight = optarg;
-                break;
-            case 'o':
-                theSettings.szOutfile = optarg;
-                break;
-            case 't':
-                theSettings.nThreads = optarg;
-                break;
-            case 'r':
-                shasad
-                break;
-            case 's':
-                sadsa
-                break;
-            case '?':
-                printf("Invalid option specified.\n");
-                return -1;
-            default:
-                return -1;
-        }
-    }
+    
 
    /* Are there any locks to set up? */
 
