@@ -80,6 +80,33 @@ void compute_image_singlethread ( struct FractalSettings * pSettings, struct bit
 	}
 }
 
+void compute_image_multithread ( struct FractalSettings * pSettings, struct bitmap * pBitmap, int min_i, int max_i, int min_j, int max_j)
+{
+	int i,j;
+
+	// For every pixel i,j, in the image...
+
+	for(j=min_j; j<max_j; j++) {
+		for(i=min_i; i<max_i; i++) {
+
+			// Scale from pixels i,j to coordinates x,y
+			double x = pSettings->fMinX + i*(pSettings->fMaxX - pSettings->fMinX) / pSettings->nPixelWidth;
+			double y = pSettings->fMinY + j*(pSettings->fMaxY - pSettings->fMinY) / pSettings->nPixelHeight;
+
+			// Compute the iterations at x,y
+			int iter = compute_point(x,y,pSettings->nMaxIter);
+
+			// Convert a iteration number to an RGB color.
+			// (Change this bit to get more interesting colors.)
+			int gray = 255 * iter / pSettings->nMaxIter;
+
+            // Set the particular pixel to the specific value
+			// Set the pixel in the bitmap.
+			bitmap_set(pBitmap,i,j,gray);
+		}
+	}
+}
+
 /* Process all of the arguments as provided as an input and appropriately modify the
    settings for the project 
    @returns 1 if successful, 0 if unsuccessful (bad arguments) */
@@ -113,7 +140,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                 }
                 else{
                     printf("Error: -xmin requires numeric argument.\n");
-                    return -1;
+                    return 0;
                 }
                 break;
             case 'b':
@@ -123,12 +150,12 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     }
                     else{
                         printf("Error: -xmax argument must be greater than -xmin argument.\n");
-                        return -1;
+                        return 0;
                     }
                 }
                 else{
                     printf("Error: -xmax requires numeric argument.\n");
-                    return -1;
+                    return 0;
                 }
                 break;
             case 'c':
@@ -137,7 +164,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                 }
                 else{
                     printf("Error: -ymin requires numeric argument.\n");
-                    return -1;
+                    return 0;
                 }
                 break;
             case 'd':
@@ -147,12 +174,12 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     }
                     else{
                         printf("Error: -ymax argument must be greater than -ymin argument.\n");
-                        return -1;
+                        return 0;
                     }
                 }
                 else{
                     printf("Error: -ymax requires numeric argument.\n");
-                    return -1;
+                    return 0;
                 }
                 break;
             case 'm':
@@ -161,7 +188,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                 }
                 else{
                     printf("Error: -maxiter requires positive integer argument.\n");
-                    return -1;
+                    return 0;
                 }
                 break;
             case 'w':
@@ -170,7 +197,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                 }
                 else{
                     printf("Error: -width requires positive integer argument.\n");
-                    return -1;
+                    return 0;
                 }
                 break;
             case 'h':
@@ -179,7 +206,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                 }
                 else{
                     printf("Error: -height requires positive integer argument.\n");
-                    return -1;
+                    return 0;
                 }
                 break;
             case 'o':
@@ -188,7 +215,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                 }
                 else{
                     printf("Error: output filename must be less than %d characters.\n", MAX_OUTFILE_NAME_LEN);
-                    return -1;
+                    return 0;
                 }
                 break;
             case 't':
@@ -197,7 +224,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                 }
                 else{
                     printf("Error: -threads requires positive integer argument.\n");
-                    return -1;
+                    return 0;
                 }
                 break;
             case 'r':
@@ -208,15 +235,16 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                 break;
             case '?':
                 printf("Invalid option specified.\n");
-                return -1;
+                return 0;
             default:
-                return -1;
+                return 0;
         }
     }
     return 1;
 }
 
-int isNumber(char *str, int len){
+int isNumber(char *str, int len)
+{
     for(int i=0; i<len; i++){
         if((str[i]<'-') || (str[i]>'9') || (str[i] == '/')){
             return 0;
@@ -294,8 +322,23 @@ int main( int argc, char *argv[] )
         {
             /* A row-based approach will not require any concurrency protection */
 
-            /* Could you send an argument and write a different version of compute_image that works off of a
-               certain parameter setting for the rows to iterate upon? */
+            int row_size = theSettings.nPixelHeight / theSettings.nThreads; 
+            struct bitmap * pBitmap = bitap_create(theSettings.nPixelWidth, theSettings.nPixelHeight);
+            pthread_t thread[theSettings.nThreads];
+
+            /* Fill the bitmap with dark blue */
+            bitmap_reset(pBitmap,MAKE_RGBA(0,0,255,0));
+
+            /* Compute the image */
+            for(int i=0; i<theSettings.nThreads){
+                compute_image_multithread(&theSettings, pBitmap, 0, theSettings.nPixelWidth, i*row_size, (i+1)*row_size);
+            }
+
+            // Save the image in the stated file.
+            if(!bitmap_save(pBitmap,theSettings.szOutfile)) {
+                fprintf(stderr,"fractal: couldn't write to %s: %s\n",theSettings.szOutfile,strerror(errno));
+                return 1;
+            }
         }
         else if(theSettings.theMode == MODE_THREAD_TASK)
         {
