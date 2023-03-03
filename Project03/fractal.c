@@ -132,7 +132,7 @@ void * compute_image_tasks (void *args)
 {
    struct ThreadArgs *pargs = (struct ThreadArgs *) args;
 	while (num_tasks>0) // keep pulling tasks
-	{	
+	{ 
 		pthread_mutex_lock(&lock); // lock and must unlock below!
       pargs->min_i = tasks[num_tasks-1].startX;
       pargs->max_i = tasks[num_tasks-1].stopX;
@@ -423,8 +423,6 @@ int main( int argc, char *argv[] )
             int task_row_size = 20;
 				int task_col_size = 20;
 
-
-
             struct bitmap * pBitmap = bitmap_create(theSettings.nPixelWidth, theSettings.nPixelHeight);
             struct ThreadArgs targs[theSettings.nThreads]; 
 
@@ -437,7 +435,7 @@ int main( int argc, char *argv[] )
 						tasks[num_tasks].stopX = (i+1)*task_col_size;
 
 						if (tasks[num_tasks].stopX > theSettings.nPixelWidth){
-							tasks[num_tasks].stopX > theSettings.nPixelWidth; // keep in bounds
+							tasks[num_tasks].stopX = theSettings.nPixelWidth; // keep in bounds
 							printf("HERE\n");
 						}
 						
@@ -474,7 +472,7 @@ int main( int argc, char *argv[] )
                 if(i == theSettings.nThreads-1){ // TODO: idk what this means, so idk if it needs changed
                     targs[i].max_j = theSettings.nPixelHeight; // fix rounding error for non-divisors
                 }
-                pthread_create(&targs[i].threadID, NULL, compute_image_multithread, (void *) &targs[i]);
+                pthread_create(&targs[i].threadID, NULL, compute_image_tasks, (void *) &targs[i]);
             }
 
             for(int i=0; i<theSettings.nThreads; i++){
