@@ -15,25 +15,6 @@ Starting code for CSE 30341 Project 3 - Spring 2023
 #include "bitmap.h"
 #include "fractal.h"
 
-
-
- //or task (perhaps say a startX, startY and stopX, stopY in a struct).  You can have a global array 
-
-// Task Struct
-struct p_tasks{
-	int startX;
-	int startY;
-	int stopX;
-	int stopY;
-};
-
-// Global Task List
-struct p_tasks tasks[9000];
-int num_tasks = 0;
-
-// Mutex lock
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
 /*
 Compute the number of iterations at point x, y
 in the complex space, up to a maximum of maxiter.
@@ -92,7 +73,7 @@ void compute_image_singlethread ( struct FractalSettings * pSettings, struct bit
 			// (Change this bit to get more interesting colors.)
 			int gray = 255 * iter / pSettings->nMaxIter;
 
-         // Set the particular pixel to the specific value
+            // Set the particular pixel to the specific value
 			// Set the pixel in the bitmap.
 			bitmap_set(pBitmap,i,j,gray);
 		}
@@ -120,7 +101,7 @@ void * compute_image_multithread (void *args)
 			// (Change this bit to get more interesting colors.)
 			int gray = 255 * iter / pargs->pSettings->nMaxIter;
 
-         // Set the particular pixel to the specific value
+            // Set the particular pixel to the specific value
 			// Set the pixel in the bitmap.
 			bitmap_set(pargs->pBitmap,i,j,gray);
 		}
@@ -128,27 +109,6 @@ void * compute_image_multithread (void *args)
     return 0;
 }
 
-void * compute_image_tasks (void *args)
-{
-   struct ThreadArgs *pargs = (struct ThreadArgs *) args;
-	while (num_tasks>0) // keep pulling tasks
-	{	
-		pthread_mutex_lock(&lock); // lock and must unlock below!
-      pargs->min_i = tasks[num_tasks-1].startX;
-      pargs->max_i = tasks[num_tasks-1].stopX;
-      pargs->min_j = tasks[num_tasks-1].startY;
-      pargs->max_j = tasks[num_tasks-1].stopY;
-
-		num_tasks --; // remove from the total count
-
-		compute_image_multithread(pargs); 
-
-		pthread_mutex_unlock(&lock); // unlock the lock from above!
-	}
-
-	return 0;
-
-}
 int isNumber(char *str, int len) // make arg processing easier
 {
     for(int i=0; i<len; i++){
@@ -186,7 +146,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
             case 'h':
                 printf("help message\n");
                 return 0; // return 0 so that main() doesn't continue
-            case 'a': // xmin
+            case 'a':
                 if (atof(optarg) || isNumber(optarg, strlen(optarg))){
                     pSettings->fMinX = atof(optarg);
                 }
@@ -195,7 +155,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 'b': // xmax
+            case 'b':
                 if (atof(optarg) || isNumber(optarg, strlen(optarg))){
                     if (atof(optarg) > pSettings->fMinX){
                         pSettings->fMaxX = atof(optarg);
@@ -210,7 +170,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 'c': // ymin
+            case 'c':
                 if (atof(optarg) || isNumber(optarg, strlen(optarg))){
                     pSettings->fMinY = atof(optarg);
                 }
@@ -219,7 +179,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 'd': // ymax
+            case 'd':
                 if (atof(optarg) || isNumber(optarg, strlen(optarg))){
                     if (atof(optarg) > pSettings->fMinY){
                         pSettings->fMaxY = atof(optarg);
@@ -234,7 +194,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 'm': // max iter
+            case 'm':
                 if (atoi(optarg)>0){
                     pSettings->nMaxIter = atoi(optarg);
                 }
@@ -243,7 +203,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 'w': // width
+            case 'w':
                 if (atoi(optarg)>0){
                     pSettings->nPixelWidth = atoi(optarg);
                 }
@@ -252,7 +212,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 'y': // height
+            case 'y':
                 if (atoi(optarg)>0){
                     pSettings->nPixelHeight = atoi(optarg);
                 }
@@ -261,7 +221,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 'o': // output
+            case 'o':
                 if (strlen(optarg)<=MAX_OUTFILE_NAME_LEN){
                     strncpy(pSettings->szOutfile, optarg, MAX_OUTFILE_NAME_LEN);
                 }
@@ -270,7 +230,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 't': // threads
+            case 't':
                 if (atoi(optarg)>0){
                     pSettings->nThreads = atoi(optarg);
                 }
@@ -279,10 +239,10 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 'r': // row 
+            case 'r':
                 pSettings->theMode = MODE_THREAD_ROW;
                 break;
-            case 's': // task
+            case 's':
                 pSettings->theMode = MODE_THREAD_TASK;
                 break;
             case '?':
@@ -342,7 +302,7 @@ int main( int argc, char *argv[] )
    if(processArguments(argc, argv, &theSettings))
    {
         /* Dispatch here based on what mode we might be in */
-        if(theSettings.theMode == MODE_THREAD_SINGLE)  // Single thread
+        if(theSettings.theMode == MODE_THREAD_SINGLE)
         {
             /* Create a bitmap of the appropriate size */
             struct bitmap * pBitmap = bitmap_create(theSettings.nPixelWidth, theSettings.nPixelHeight);
@@ -359,7 +319,7 @@ int main( int argc, char *argv[] )
                 return 1;
             }            
         }
-        else if(theSettings.theMode == MODE_THREAD_ROW) // Multi-thread by row
+        else if(theSettings.theMode == MODE_THREAD_ROW)
         {
             /* A row-based approach will not require any concurrency protection */
 
@@ -369,7 +329,6 @@ int main( int argc, char *argv[] )
 
             /* Fill the bitmap with dark blue */
             bitmap_reset(pBitmap,MAKE_RGBA(0,0,255,0));
-
 
             /* Compute the image */
             for(int i=0; i<theSettings.nThreads; i++){
@@ -415,77 +374,6 @@ int main( int argc, char *argv[] )
                the tasks at the outset. Hence, it is OK whenever a thread needs something to do to try to access
                that shared data structure with all of the respective tasks.  
                */
-
-            /* A task-based approach will require any concurrency protection */
-
-
-				// Decide task size
-            int task_row_size = 20;
-				int task_col_size = 20;
-
-
-
-            struct bitmap * pBitmap = bitmap_create(theSettings.nPixelWidth, theSettings.nPixelHeight);
-            struct ThreadArgs targs[theSettings.nThreads]; 
-
-				// Fill task global array
-				for(int i=0; i<theSettings.nPixelWidth/task_col_size; i++){
-					for(int j=0; j<theSettings.nPixelHeight/task_row_size; j++){ 
-
-						// col
-						tasks[num_tasks].startX = i*task_col_size;
-						tasks[num_tasks].stopX = (i+1)*task_col_size;
-
-						if (tasks[num_tasks].stopX > theSettings.nPixelWidth){
-							tasks[num_tasks].stopX > theSettings.nPixelWidth; // keep in bounds
-							printf("HERE\n");
-						}
-						
-						// row
-						tasks[num_tasks].startY = j*task_row_size;
-						tasks[num_tasks].stopY = (j+1)*task_row_size;
-
-						if (tasks[num_tasks].stopY > theSettings.nPixelHeight){
-							tasks[num_tasks].stopY = theSettings.nPixelHeight; // keep in bounds
-							printf("HERE\n");
-						}
-
-						// increment num of tasks
-						num_tasks++;
-			
-					}
-				}
-
-            /* Fill the bitmap with dark green */
-            bitmap_reset(pBitmap,MAKE_RGBA(0,255,0,0));
-
-            /* Compute the image */
-            for(int i=0; i<theSettings.nThreads; i++){
-
-                targs[i].pSettings = &theSettings; // setting up struct for pthread
-                targs[i].pBitmap = pBitmap;
-
-					 // This differs from rows. We are using rectangles now
-                targs[i].min_i = tasks[i].startX;
-                targs[i].max_i = tasks[i].stopX;
-                targs[i].min_j = tasks[i].startY;
-                targs[i].max_j = tasks[i].stopY;
-					 
-                if(i == theSettings.nThreads-1){ // TODO: idk what this means, so idk if it needs changed
-                    targs[i].max_j = theSettings.nPixelHeight; // fix rounding error for non-divisors
-                }
-                pthread_create(&targs[i].threadID, NULL, compute_image_multithread, (void *) &targs[i]);
-            }
-
-            for(int i=0; i<theSettings.nThreads; i++){
-                pthread_join(targs[i].threadID, NULL);
-            }
-
-            // Save the image in the stated file.
-            if(!bitmap_save(pBitmap,theSettings.szOutfile)) {
-                fprintf(stderr,"fractal: couldn't write to %s: %s\n",theSettings.szOutfile,strerror(errno));
-                return 1;
-            }
         }
         else 
         {
