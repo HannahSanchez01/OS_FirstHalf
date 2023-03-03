@@ -49,7 +49,15 @@ struct FractalSettings
     int                  nThreads;
 };
 
-
+struct ThreadArgs{
+    pthread_t threadID;
+    struct FractalSettings *pSettings;
+    struct bitmap *pBitmap;
+    int min_i;
+    int max_i;
+    int min_j;
+    int max_j;
+};
 
 
 /* Function prototypes */
@@ -57,5 +65,11 @@ struct FractalSettings
 static int compute_point( double x, double y, int max );
 
 void compute_image_singlethread ( struct FractalSettings * pSettings, struct bitmap * pBitmap);
+
+void * comput_image_multithread ( void *args );
+
+int isNumber(char *str, int len);
+
+char processArguments (int argc, char * argv[], struct FractalSettings * pSettings);
 
 #endif

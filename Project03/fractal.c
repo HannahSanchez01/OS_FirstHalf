@@ -80,31 +80,43 @@ void compute_image_singlethread ( struct FractalSettings * pSettings, struct bit
 	}
 }
 
-void compute_image_multithread ( struct FractalSettings * pSettings, struct bitmap * pBitmap, int min_i, int max_i, int min_j, int max_j)
+void * compute_image_multithread (void *args)
 {
+    struct ThreadArgs *pargs = (struct ThreadArgs *) args;
 	int i,j;
 
 	// For every pixel i,j, in the image...
 
-	for(j=min_j; j<max_j; j++) {
-		for(i=min_i; i<max_i; i++) {
+	for(j=pargs->min_j; j<pargs->max_j; j++) {
+		for(i=pargs->min_i; i<pargs->max_i; i++) {
 
 			// Scale from pixels i,j to coordinates x,y
-			double x = pSettings->fMinX + i*(pSettings->fMaxX - pSettings->fMinX) / pSettings->nPixelWidth;
-			double y = pSettings->fMinY + j*(pSettings->fMaxY - pSettings->fMinY) / pSettings->nPixelHeight;
+			double x = pargs->pSettings->fMinX + i*(pargs->pSettings->fMaxX - pargs->pSettings->fMinX) / pargs->pSettings->nPixelWidth;
+			double y = pargs->pSettings->fMinY + j*(pargs->pSettings->fMaxY - pargs->pSettings->fMinY) / pargs->pSettings->nPixelHeight;
 
 			// Compute the iterations at x,y
-			int iter = compute_point(x,y,pSettings->nMaxIter);
+			int iter = compute_point(x,y,pargs->pSettings->nMaxIter);
 
 			// Convert a iteration number to an RGB color.
 			// (Change this bit to get more interesting colors.)
-			int gray = 255 * iter / pSettings->nMaxIter;
+			int gray = 255 * iter / pargs->pSettings->nMaxIter;
 
             // Set the particular pixel to the specific value
 			// Set the pixel in the bitmap.
-			bitmap_set(pBitmap,i,j,gray);
+			bitmap_set(pargs->pBitmap,i,j,gray);
 		}
 	}
+    return 0;
+}
+
+int isNumber(char *str, int len)
+{
+    for(int i=0; i<len; i++){
+        if((str[i]<'-') || (str[i]>'9') || (str[i] == '/')){
+            return 0;
+        }
+    }
+    return 1;
 }
 
 /* Process all of the arguments as provided as an input and appropriately modify the
@@ -120,16 +132,16 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
         {"ymax", required_argument, 0, 'd'},
         {"maxiter", required_argument, 0, 'm'},
         {"width", required_argument, 0, 'w'},
-        {"height", required_argument, 0, 'h'},
+        {"height", required_argument, 0, 'y'},
         {"output", required_argument, 0, 'o'},
         {"threads", required_argument, 0, 't'},
         {"row", no_argument, 0, 'r'},
         {"task", no_argument, 0, 's'},
         {0, 0, 0, 0}
-    }
+    };
     int c, optindex = 0;
 
-    while ((c = getopt_long_only(argc, argv, NULL, opts, &optindex)) != -1){
+    while ((c = getopt_long_only(argc, argv, "", opts, &optindex)) != -1){
         switch (c){
             case 'h':
                 printf("help message\n");
@@ -200,7 +212,7 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
                     return 0;
                 }
                 break;
-            case 'h':
+            case 'y':
                 if (atoi(optarg)>0){
                     pSettings->nPixelHeight = atoi(optarg);
                 }
@@ -242,17 +254,6 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
     }
     return 1;
 }
-
-int isNumber(char *str, int len)
-{
-    for(int i=0; i<len; i++){
-        if((str[i]<'-') || (str[i]>'9') || (str[i] == '/')){
-            return 0;
-        }
-    }
-    return 1;
-}
-
 
 int main( int argc, char *argv[] )
 {
@@ -323,15 +324,24 @@ int main( int argc, char *argv[] )
             /* A row-based approach will not require any concurrency protection */
 
             int row_size = theSettings.nPixelHeight / theSettings.nThreads; 
-            struct bitmap * pBitmap = bitap_create(theSettings.nPixelWidth, theSettings.nPixelHeight);
-            pthread_t thread[theSettings.nThreads];
+            struct bitmap * pBitmap = bitmap_create(theSettings.nPixelWidth, theSettings.nPixelHeight);
+            struct ThreadArgs targs[theSettings.nThreads];
 
             /* Fill the bitmap with dark blue */
             bitmap_reset(pBitmap,MAKE_RGBA(0,0,255,0));
 
             /* Compute the image */
-            for(int i=0; i<theSettings.nThreads){
-                compute_image_multithread(&theSettings, pBitmap, 0, theSettings.nPixelWidth, i*row_size, (i+1)*row_size);
+            for(int i=0; i<theSettings.nThreads; i++){
+                targs[i].pSettings = &theSettings;
+                targs[i].pBitmap = pBitmap;
+                targs[i].min_i = 0;
+                targs[i].max_i = theSettings.nPixelWidth;
+                targs[i].min_j = i*row_size;
+                targs[i].max_j = (i+1)*row_size;
+                pthread_create(&targs[i].threadID, NULL, compute_image_multithread, (void *) &targs[i]);
+            }
+            for(int i=0; i<theSettings.nThreads; i++){
+                pthread_join(targs[i].threadID, NULL);
             }
 
             // Save the image in the stated file.
