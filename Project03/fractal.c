@@ -141,9 +141,10 @@ void * compute_image_tasks (void *args)
 
 		num_tasks --; // remove from the total count
 
+		pthread_mutex_unlock(&lock); // unlock the lock from above!
+
 		compute_image_multithread(pargs); 
 
-		pthread_mutex_unlock(&lock); // unlock the lock from above!
 	}
 
 	return 0;
@@ -436,7 +437,6 @@ int main( int argc, char *argv[] )
 
 						if (tasks[num_tasks].stopX > theSettings.nPixelWidth){
 							tasks[num_tasks].stopX = theSettings.nPixelWidth; // keep in bounds
-							printf("HERE\n");
 						}
 						
 						// row
@@ -445,7 +445,6 @@ int main( int argc, char *argv[] )
 
 						if (tasks[num_tasks].stopY > theSettings.nPixelHeight){
 							tasks[num_tasks].stopY = theSettings.nPixelHeight; // keep in bounds
-							printf("HERE\n");
 						}
 
 						// increment num of tasks
