@@ -87,9 +87,9 @@ void * compute_image_multithread (void *args)
 
 	// For every pixel i,j, in the image...
 
-	for(j=pargs->min_j; j<pargs->max_j; j++) {
+	for(j=pargs->min_j; j<pargs->max_j; j++) { // manually set all 4 bounds for task mode
 		for(i=pargs->min_i; i<pargs->max_i; i++) {
-
+            // actual functionality is the same as single thread, just w/ adjusted variables bc threads
 			// Scale from pixels i,j to coordinates x,y
 			double x = pargs->pSettings->fMinX + i*(pargs->pSettings->fMaxX - pargs->pSettings->fMinX) / pargs->pSettings->nPixelWidth;
 			double y = pargs->pSettings->fMinY + j*(pargs->pSettings->fMaxY - pargs->pSettings->fMinY) / pargs->pSettings->nPixelHeight;
@@ -109,7 +109,7 @@ void * compute_image_multithread (void *args)
     return 0;
 }
 
-int isNumber(char *str, int len)
+int isNumber(char *str, int len) // make arg processing easier
 {
     for(int i=0; i<len; i++){
         if((str[i]<'-') || (str[i]>'9') || (str[i] == '/')){
@@ -124,7 +124,7 @@ int isNumber(char *str, int len)
    @returns 1 if successful, 0 if unsuccessful (bad arguments) */
 char processArguments (int argc, char * argv[], struct FractalSettings * pSettings)
 {
-    static struct option opts[] = {
+    static struct option opts[] = { // needed for getopt
         {"help", no_argument, 0, 'h'},
         {"xmin", required_argument, 0, 'a'},
         {"xmax", required_argument, 0, 'b'},
@@ -141,11 +141,11 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
     };
     int c, optindex = 0;
 
-    while ((c = getopt_long_only(argc, argv, "", opts, &optindex)) != -1){
+    while ((c = getopt_long_only(argc, argv, "", opts, &optindex)) != -1){ // argparsing with getopt
         switch (c){
             case 'h':
                 printf("help message\n");
-                return 0;
+                return 0; // return 0 so that main() doesn't continue
             case 'a':
                 if (atof(optarg) || isNumber(optarg, strlen(optarg))){
                     pSettings->fMinX = atof(optarg);
@@ -323,16 +323,16 @@ int main( int argc, char *argv[] )
         {
             /* A row-based approach will not require any concurrency protection */
 
-            int row_size = theSettings.nPixelHeight / theSettings.nThreads; 
+            int row_size = theSettings.nPixelHeight / theSettings.nThreads; // figure out how big each band is
             struct bitmap * pBitmap = bitmap_create(theSettings.nPixelWidth, theSettings.nPixelHeight);
-            struct ThreadArgs targs[theSettings.nThreads];
+            struct ThreadArgs targs[theSettings.nThreads]; 
 
             /* Fill the bitmap with dark blue */
             bitmap_reset(pBitmap,MAKE_RGBA(0,0,255,0));
 
             /* Compute the image */
             for(int i=0; i<theSettings.nThreads; i++){
-                targs[i].pSettings = &theSettings;
+                targs[i].pSettings = &theSettings; // setting up struct for pthread
                 targs[i].pBitmap = pBitmap;
                 targs[i].min_i = 0;
                 targs[i].max_i = theSettings.nPixelWidth;
@@ -352,6 +352,12 @@ int main( int argc, char *argv[] )
         }
         else if(theSettings.theMode == MODE_THREAD_TASK)
         {
+            // idea: create array storing corner coordinates of the task boxes
+            // use these for threadargs.min_i, max_i, min_j, max_j
+            // example: all tasks are 20x20. tasks[i][j] = {min_i=i*20, max_i=(i+1)*20, min_j=j*20, max_j=(j+1)*20}
+            // when a thread pulls tasks[i][j], use mutex to lock it until it finishes
+
+
             /* For the task-based model, you will want to create some sort of a way that captures the instructions
                or task (perhaps say a startX, startY and stopX, stopY in a struct).  You can have a global array 
                of the particular tasks with each thread attempting to pop off the next task.  Feel free to tinker 
