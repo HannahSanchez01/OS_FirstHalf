@@ -338,6 +338,9 @@ int main( int argc, char *argv[] )
                 targs[i].max_i = theSettings.nPixelWidth;
                 targs[i].min_j = i*row_size;
                 targs[i].max_j = (i+1)*row_size;
+                if(i == theSettings.nThreads-1){
+                    targs[i].max_j = theSettings.nPixelHeight; // fix rounding error for non-divisors
+                }
                 pthread_create(&targs[i].threadID, NULL, compute_image_multithread, (void *) &targs[i]);
             }
             for(int i=0; i<theSettings.nThreads; i++){
