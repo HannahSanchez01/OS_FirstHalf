@@ -130,26 +130,25 @@ void * compute_image_multithread (void *args)
 
 void * compute_image_tasks (void *args)
 {
-   struct ThreadArgs *pargs = (struct ThreadArgs *) args;
+    struct ThreadArgs *pargs = (struct ThreadArgs *) args;
 	while (num_tasks>0) // keep pulling tasks
 	{ 
 		pthread_mutex_lock(&lock); // lock and must unlock below!
-      pargs->min_i = tasks[num_tasks-1].startX;
-      pargs->max_i = tasks[num_tasks-1].stopX;
-      pargs->min_j = tasks[num_tasks-1].startY;
-      pargs->max_j = tasks[num_tasks-1].stopY;
+        pargs->min_i = tasks[num_tasks-1].startX;
+        pargs->max_i = tasks[num_tasks-1].stopX;
+        pargs->min_j = tasks[num_tasks-1].startY;
+        pargs->max_j = tasks[num_tasks-1].stopY;
 
-		num_tasks --; // remove from the total count
+		num_tasks--; // remove from the total count
 
 		pthread_mutex_unlock(&lock); // unlock the lock from above!
 
-		compute_image_multithread(pargs); 
+		compute_image_multithread((void *) pargs); 
 
 	}
-
 	return 0;
-
 }
+
 int isNumber(char *str, int len) // make arg processing easier
 {
     for(int i=0; i<len; i++){
@@ -395,63 +394,38 @@ int main( int argc, char *argv[] )
                 return 1;
             }
         }
-        else if(theSettings.theMode == MODE_THREAD_TASK)
+        else if(theSettings.theMode == MODE_THREAD_TASK) // Multi-thread by tasks
         {
-            // idea: create array storing corner coordinates of the task boxes
-            // use these for threadargs.min_i, max_i, min_j, max_j
-            // example: all tasks are 20x20. tasks[i][j] = {min_i=i*20, max_i=(i+1)*20, min_j=j*20, max_j=(j+1)*20}
-            // when a thread pulls tasks[i][j], use mutex to lock it until it finishes
-
-
-            /* For the task-based model, you will want to create some sort of a way that captures the instructions
-               or task (perhaps say a startX, startY and stopX, stopY in a struct).  You can have a global array 
-               of the particular tasks with each thread attempting to pop off the next task.  Feel free to tinker 
-               on what the right size of the work unit is but 20x20 is a good starting point.  You are also welcome
-               to modify the settings struct to help you out as well.  
-               
-               Generally, it will be good to create all of the tasks into that array and then to start your threads
-               with them in turn attempting to pull off a task one at a time.  
-               
-               While we could do condition variables, there is not really an ongoing producer if we create all of
-               the tasks at the outset. Hence, it is OK whenever a thread needs something to do to try to access
-               that shared data structure with all of the respective tasks.  
-               */
-
-            /* A task-based approach will require any concurrency protection */
-
-
-				// Decide task size
+			// Decide task size
             int task_row_size = 20;
-				int task_col_size = 20;
+			int task_col_size = 20;
 
             struct bitmap * pBitmap = bitmap_create(theSettings.nPixelWidth, theSettings.nPixelHeight);
             struct ThreadArgs targs[theSettings.nThreads]; 
 
-				// Fill task global array
-				for(int i=0; i<theSettings.nPixelWidth/task_col_size; i++){
-					for(int j=0; j<theSettings.nPixelHeight/task_row_size; j++){ 
+            // Fill task global array
+            for(int i=0; i<theSettings.nPixelWidth/task_col_size; i++){
+                for(int j=0; j<theSettings.nPixelHeight/task_row_size; j++){ 
+                    // col
+                    tasks[num_tasks].startX = i*task_col_size;
+                    tasks[num_tasks].stopX = (i+1)*task_col_size;
 
-						// col
-						tasks[num_tasks].startX = i*task_col_size;
-						tasks[num_tasks].stopX = (i+1)*task_col_size;
+                    if (i == ((theSettings.nPixelWidth/task_col_size)-1)){ // final task in each row
+                        tasks[num_tasks].stopX = theSettings.nPixelWidth; // force to boundary
+                    }
+                    
+                    // row
+                    tasks[num_tasks].startY = j*task_row_size;
+                    tasks[num_tasks].stopY = (j+1)*task_row_size;
 
-						if (tasks[num_tasks].stopX > theSettings.nPixelWidth){
-							tasks[num_tasks].stopX = theSettings.nPixelWidth; // keep in bounds
-						}
-						
-						// row
-						tasks[num_tasks].startY = j*task_row_size;
-						tasks[num_tasks].stopY = (j+1)*task_row_size;
+                    if (j == ((theSettings.nPixelHeight/task_row_size)-1)){ // final task in each col
+                        tasks[num_tasks].stopY = theSettings.nPixelHeight; // force to boundary
+                    }
 
-						if (tasks[num_tasks].stopY > theSettings.nPixelHeight){
-							tasks[num_tasks].stopY = theSettings.nPixelHeight; // keep in bounds
-						}
-
-						// increment num of tasks
-						num_tasks++;
-			
-					}
-				}
+                    // increment num of tasks
+                    num_tasks++;
+                }
+            }
 
             /* Fill the bitmap with dark green */
             bitmap_reset(pBitmap,MAKE_RGBA(0,255,0,0));
@@ -462,15 +436,12 @@ int main( int argc, char *argv[] )
                 targs[i].pSettings = &theSettings; // setting up struct for pthread
                 targs[i].pBitmap = pBitmap;
 
-					 // This differs from rows. We are using rectangles now
+				// This differs from rows. We are using rectangles now
                 targs[i].min_i = tasks[i].startX;
                 targs[i].max_i = tasks[i].stopX;
                 targs[i].min_j = tasks[i].startY;
                 targs[i].max_j = tasks[i].stopY;
-					 
-                if(i == theSettings.nThreads-1){ // TODO: idk what this means, so idk if it needs changed
-                    targs[i].max_j = theSettings.nPixelHeight; // fix rounding error for non-divisors
-                }
+
                 pthread_create(&targs[i].threadID, NULL, compute_image_tasks, (void *) &targs[i]);
             }
 
