@@ -15,10 +15,6 @@ Starting code for CSE 30341 Project 3 - Spring 2023
 #include "bitmap.h"
 #include "fractal.h"
 
-
-
- //or task (perhaps say a startX, startY and stopX, stopY in a struct).  You can have a global array 
-
 // Task Struct
 struct p_tasks{
 	int startX;
@@ -92,7 +88,7 @@ void compute_image_singlethread ( struct FractalSettings * pSettings, struct bit
 			// (Change this bit to get more interesting colors.)
 			int gray = 255 * iter / pSettings->nMaxIter;
 
-         // Set the particular pixel to the specific value
+            // Set the particular pixel to the specific value
 			// Set the pixel in the bitmap.
 			bitmap_set(pBitmap,i,j,gray);
 		}
@@ -120,7 +116,7 @@ void * compute_image_multithread (void *args)
 			// (Change this bit to get more interesting colors.)
 			int gray = 255 * iter / pargs->pSettings->nMaxIter;
 
-         // Set the particular pixel to the specific value
+            // Set the particular pixel to the specific value
 			// Set the pixel in the bitmap.
 			bitmap_set(pargs->pBitmap,i,j,gray);
 		}
@@ -133,7 +129,7 @@ void * compute_image_tasks (void *args)
     struct ThreadArgs *pargs = (struct ThreadArgs *) args;
 	while (num_tasks>0) // keep pulling tasks
 	{ 
-		pthread_mutex_lock(&lock); // lock and must unlock below!
+		pthread_mutex_lock(&lock); // lock so that only one thread can touch this index
         pargs->min_i = tasks[num_tasks-1].startX;
         pargs->max_i = tasks[num_tasks-1].stopX;
         pargs->min_j = tasks[num_tasks-1].startY;
@@ -143,8 +139,7 @@ void * compute_image_tasks (void *args)
 
 		pthread_mutex_unlock(&lock); // unlock the lock from above!
 
-		compute_image_multithread((void *) pargs); 
-
+		compute_image_multithread((void *) pargs); // now actually process task
 	}
 	return 0;
 }
@@ -152,7 +147,7 @@ void * compute_image_tasks (void *args)
 int isNumber(char *str, int len) // make arg processing easier
 {
     for(int i=0; i<len; i++){
-        if((str[i]<'-') || (str[i]>'9') || (str[i] == '/')){
+        if((str[i]<'-') || (str[i]>'9') || (str[i] == '/')){ // check for characters that aren't 0-9, -, or .
             return 0;
         }
     }
@@ -184,7 +179,14 @@ char processArguments (int argc, char * argv[], struct FractalSettings * pSettin
     while ((c = getopt_long_only(argc, argv, "", opts, &optindex)) != -1){ // argparsing with getopt
         switch (c){
             case 'h':
-                printf("help message\n");
+                printf("Usage: ./fractal [-help] [-xmin x] [-xmax x] [-ymin y] [-ymax y] [-maxiter iter] [-width w] [-height h] [-output filename] [-threads n] [-row | -task]\n");
+                printf("-help: displays this message\n");
+                printf("-xmin, -xmax, -ymin, -ymax: changes the bounds of the image\n");
+                printf("-maxiter: changes the maximum number of iterations\n");
+                printf("-width, -height: changes the dimensions of the image\n");
+                printf("-output: changes the output filename\n");
+                printf("-threads: changes the number of threads to use\n");
+                printf("-row | -task: runs the program in row or task mode\n");
                 return 0; // return 0 so that main() doesn't continue
             case 'a': // xmin
                 if (atof(optarg) || isNumber(optarg, strlen(optarg))){
@@ -314,33 +316,8 @@ int main( int argc, char *argv[] )
     
     strncpy(theSettings.szOutfile, DEFAULT_OUTPUT_FILE, MAX_OUTFILE_NAME_LEN);
 
-    /* TODO: Adapt your code to use arguments where the arguments can be used to override 
-             the default values 
-
-        -help         Display the help information
-        -xmin X       New value for x min
-        -xmax X       New value for x max
-        -ymin Y       New value for y min
-        -ymax Y       New value for y max
-        -maxiter N    New value for the maximum number of iterations (must be an integer)     
-        -width W      New width for the output image
-        -height H     New height for the output image
-        -output F     New name for the output file
-        -threads N    Number of threads to use for processing (default is 1) 
-        -row          Run using a row-based approach        
-        -task         Run using a thread-based approach
-
-        Support for setting the number of threads is optional
-
-        You may also appropriately apply reasonable minimum / maximum values (e.g. minimum image width, etc.)
-    */
-    
-
-   /* Are there any locks to set up? */
-
-
-   if(processArguments(argc, argv, &theSettings))
-   {
+    if(processArguments(argc, argv, &theSettings))
+    {
         /* Dispatch here based on what mode we might be in */
         if(theSettings.theMode == MODE_THREAD_SINGLE)  // Single thread
         {
@@ -362,14 +339,12 @@ int main( int argc, char *argv[] )
         else if(theSettings.theMode == MODE_THREAD_ROW) // Multi-thread by row
         {
             /* A row-based approach will not require any concurrency protection */
-
             int row_size = theSettings.nPixelHeight / theSettings.nThreads; // figure out how big each band is
             struct bitmap * pBitmap = bitmap_create(theSettings.nPixelWidth, theSettings.nPixelHeight);
             struct ThreadArgs targs[theSettings.nThreads]; 
 
             /* Fill the bitmap with dark blue */
             bitmap_reset(pBitmap,MAKE_RGBA(0,0,255,0));
-
 
             /* Compute the image */
             for(int i=0; i<theSettings.nThreads; i++){
@@ -432,7 +407,6 @@ int main( int argc, char *argv[] )
 
             /* Compute the image */
             for(int i=0; i<theSettings.nThreads; i++){
-
                 targs[i].pSettings = &theSettings; // setting up struct for pthread
                 targs[i].pBitmap = pBitmap;
 
@@ -457,18 +431,13 @@ int main( int argc, char *argv[] )
         }
         else 
         {
-            /* Uh oh - how did we get here? */
+            printf("Error: how did you get here?\n");
         }
    }
    else
    {
-        /* Probably a great place to dump the help */
-
-        /* Probably a good place to bail out */
         exit(-1);
    }
-
-    /* TODO: Do any cleanup as required */
 
 	return 0;
 }
